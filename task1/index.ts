@@ -1,12 +1,10 @@
 import express from "express";
-import { PrismaClient } from "@prisma/client";
 import axios from "axios";
+import { PrismaClient } from "@prisma/client"; // Assuming you have prisma configured
 
 const app = express();
-const prisma = new PrismaClient();
-
 app.use(express.json());
-
+const prisma = new PrismaClient();
 app.post("/createContact", async (req, res) => {
   const { first_name, last_name, email, mobile_number, data_store } = req.body;
 
@@ -14,11 +12,10 @@ app.post("/createContact", async (req, res) => {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
-  try {
-    let contact;
-    if (data_store === "CRM") {
+  const postContactToCRM: any = async () => {
+    try {
       const response = await axios.post(
-        "https://your-freshsales-domain.com/api/contacts",
+        `https://parishi-751830712688631049.myfreshworks.com/crm/sales/api/contacts`,
         {
           contact: {
             first_name,
@@ -29,12 +26,39 @@ app.post("/createContact", async (req, res) => {
         },
         {
           headers: {
-            Authorization: `Token token=${process.env.FRESHSALES_API_KEY}`,
+            Authorization: `Token token=nUJkyw83ZtQXg5kfaNijTw `,
             "Content-Type": "application/json",
           },
         }
       );
-      contact = response.data.contact;
+      return response.data.contact;
+    } catch (error: any) {
+      if (error.response) {
+        console.error("Error response:", error.response.data);
+        console.error("Error status:", error.response.status);
+        console.error("Error headers:", error.response.headers);
+      } else {
+        console.error("Error message:", error.message);
+      }
+
+      if (error.response && error.response.status === 429) {
+        const retryAfter = error.response.headers["retry-after"] || 30;
+        console.log(
+          `Rate limit exceeded. Retrying after ${retryAfter} seconds...`
+        );
+        return new Promise((resolve) =>
+          setTimeout(() => resolve(postContactToCRM()), retryAfter * 1000)
+        );
+      } else {
+        throw error;
+      }
+    }
+  };
+
+  try {
+    let contact;
+    if (data_store === "CRM") {
+      contact = await postContactToCRM();
     } else if (data_store === "DATABASE") {
       contact = await prisma.contact.create({
         data: {
@@ -51,23 +75,22 @@ app.post("/createContact", async (req, res) => {
     return res
       .status(201)
       .json({ message: "Contact created successfully", contact });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
+    console.error("Error creating contact:", error.message);
     return res
       .status(500)
       .json({ error: "An error occurred while creating the contact" });
   }
 });
-
 app.get("/getContact", async (req, res) => {
   const { contact_id, data_store } = req.query;
   try {
     if (data_store === "CRM") {
       const response = await axios.get(
-        `https://your-freshsales-domain.com/api/contacts/${contact_id}`,
+        `https://parishi-751830712688631049.myfreshworks.com/crm/sales/api/contacts${contact_id}`,
         {
           headers: {
-            Authorization: `Token token=${process.env.FRESHSALES_API_KEY}`,
+            Authorization: `Token token=nUJkyw83ZtQXg5kfaNijTw `,
             "Content-Type": "application/json",
           },
         }
@@ -97,7 +120,6 @@ app.get("/getContact", async (req, res) => {
       .json({ error: "An error occurred while fetching the contact" });
   }
 });
-
 app.put("/updateContact", async (req, res) => {
   const { contact_id, data_store, first_name, last_name, mobile_number } =
     req.body;
@@ -122,11 +144,11 @@ app.put("/updateContact", async (req, res) => {
   try {
     if (data_store === "CRM") {
       const response = await axios.put(
-        `https://your-freshsales-domain.com/api/contacts/${contact_id}`,
+        `https://parishi-751830712688631049.myfreshworks.com/crm/sales/api/contacts${contact_id}`,
         { contact: updateData },
         {
           headers: {
-            Authorization: `Token token=${process.env.FRESHSALES_API_KEY}`,
+            Authorization: `Token token=nUJkyw83ZtQXg5kfaNijTw `,
             "Content-Type": "application/json",
           },
         }
@@ -164,16 +186,15 @@ app.put("/updateContact", async (req, res) => {
       .json({ error: "An error occurred while updating the contact" });
   }
 });
-
 app.delete("/deleteContact", async (req, res) => {
   const { contact_id, data_store } = req.body;
   try {
     if (data_store === "CRM") {
       const response = await axios.delete(
-        `https://your-freshsales-domain.com/api/contacts/${contact_id}`,
+        `https://parishi-751830712688631049.myfreshworks.com/crm/sales/api/contacts${contact_id}`,
         {
           headers: {
-            Authorization: `Token token=${process.env.FRESHSALES_API_KEY}`,
+            Authorization: `Token token=nUJkyw83ZtQXg5kfaNijTw `,
             "Content-Type": "application/json",
           },
         }
@@ -208,7 +229,4 @@ app.delete("/deleteContact", async (req, res) => {
       .json({ error: "An error occurred while deleting the contact" });
   }
 });
-
-app.listen(4000, () => {
-  console.log("PORT running on 4000");
-});
+app.listen(4000);
